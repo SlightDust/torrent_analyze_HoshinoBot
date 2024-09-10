@@ -66,7 +66,7 @@ def is_torrent(torrent_hash):
         torrent_hash = hash[0]
         return True, magnet_url, torrent_hash
     else:
-        return False, None
+        return False, None, None
 
 async def check_cache(torrent_hash):
     '''
