@@ -12,7 +12,7 @@ from requests.exceptions import SSLError
 _current_dir = os.path.dirname(__file__)
 cache_path = os.path.join(_current_dir, "torrent_info_cache.json")
 
-debug = True
+debug = False
 
 if debug:
     if _current_dir not in sys.path:
@@ -99,7 +99,6 @@ async def analyze_torrent(torrent_url):
         try:
             if cache_res: # 命中缓存
                 res = cache_res
-                print(123)
             else: # 未命中缓存
                 # url编码
                 baseurl = "https://whatslink.info"
@@ -115,7 +114,6 @@ async def analyze_torrent(torrent_url):
                     if res['error'] != 'quota_limited':
                         break
             if res['error'] == '':
-                print(444)
                 # 缓存结果
                 await write_cache(torrent_hash, res)
                 msg = f"种子哈希: {torrent_hash}\n文件类型：{res['type']}-{res['file_type']}\n种子名称: {res['name']}\n总大小: {hum_convert(res['size'])}\n文件总数：{res['count']}\n"
@@ -131,7 +129,7 @@ async def analyze_torrent(torrent_url):
             msg = f"连接{baseurl}失败，请稍后再试。"  
         except SSLError:
             msg = f"连接{baseurl}失败，请稍后再试。"
-    print(msg)
+    # print(msg)
     return msg
 
 
