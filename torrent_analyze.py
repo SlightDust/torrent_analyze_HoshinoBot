@@ -4,17 +4,20 @@ import json
 import traceback
 import os
 import sys
+import asyncio
+
+from requests.adapters import ConnectTimeoutError
+from requests.exceptions import SSLError
 
 _current_dir = os.path.dirname(__file__)
 cache_path = os.path.join(_current_dir, "torrent_info_cache.json")
 
-debug = False
+debug = True
 
 if debug:
     if _current_dir not in sys.path:
         sys.path.insert(-1, _current_dir)
     import aiorequests
-    import asyncio
 else:
     from hoshino import Service, priv, aiorequests
     sv = Service(
@@ -93,34 +96,49 @@ async def analyze_torrent(torrent_url):
     else:
         # 先检查缓存
         cache_res = await check_cache(torrent_hash)
-        print(cache_res)
-        if cache_res: # 命中缓存
-            res = cache_res
-        else: # 未命中缓存
-            # url编码
-            url = urllib.parse.quote(magnet_url)
-            url = f"https://whatslink.info/api/v1/link?url={url}"
-            ares = await aiorequests.get(url, timeout=5)
-            res = await ares.json()
-        if res['error'] == '':
-            # 缓存结果
-            await write_cache(torrent_hash, res)
-            msg = f"文件类型：{res['type']}-{res['file_type']}\n种子名称: {res['name']}\n总大小: {hum_convert(res['size'])}\n文件总数：{res['count']}\n"
-            if len(res['screenshots']) > 0:
-                msg += "种子截图：\n"
-                for i in res['screenshots'][:3]:
-                    msg += f"  {i['screenshot']}\n"
-        elif res['error'] == 'quota_limited':
-            msg = "分析失败: 请求过于频繁，请稍后再试"
-        else:
-            msg = f"分析失败：{res['error']}"
-    # print(msg)
+        try:
+            if cache_res: # 命中缓存
+                res = cache_res
+                print(123)
+            else: # 未命中缓存
+                # url编码
+                baseurl = "https://whatslink.info"
+                api_path = "/api/v1/link"
+                url = urllib.parse.quote(magnet_url)
+                url = f"{baseurl}{api_path}?url={url}"
+                # 循环20次，直到成功或达到最大次数
+                for i in range(20):
+                    print(f"第{i+1}次请求")
+                    ares = await aiorequests.get(url, timeout=10)
+                    res = await ares.json()
+                    await asyncio.sleep(3)
+                    if res['error'] != 'quota_limited':
+                        break
+            if res['error'] == '':
+                print(444)
+                # 缓存结果
+                await write_cache(torrent_hash, res)
+                msg = f"种子哈希: {torrent_hash}\n文件类型：{res['type']}-{res['file_type']}\n种子名称: {res['name']}\n总大小: {hum_convert(res['size'])}\n文件总数：{res['count']}\n"
+                # if len(res['screenshots']) > 0:
+                #     msg += "种子截图：\n"
+                #     for i in res['screenshots'][:3]:
+                #         msg += f"  {i['screenshot']}\n"
+            elif res['error'] == 'quota_limited':
+                msg = "分析失败: 请求过于频繁，请稍后再试"
+            else:
+                msg = f"分析失败：{res['error']}"
+        except ConnectTimeoutError:
+            msg = f"连接{baseurl}失败，请稍后再试。"  
+        except SSLError:
+            msg = f"连接{baseurl}失败，请稍后再试。"
+    print(msg)
     return msg
 
 
 # debug
 if __name__ == '__main__':
     if debug:
-        loop = asyncio.get_event_loop()
-        url = "magnet:?xt=urn:btih:4d78216de4b71a35d52ff37977378d5f448cc31b"
+        loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(loop)
+        url = "ec809a3d681c2dda1bc1ae8feb84c4b8077896b2"
         loop.run_until_complete(analyze_torrent(url))
