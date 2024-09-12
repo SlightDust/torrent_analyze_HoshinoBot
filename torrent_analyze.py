@@ -113,24 +113,31 @@ async def analyze_torrent(torrent_url):
                     await asyncio.sleep(3)
                     if res['error'] != 'quota_limited':
                         break
-            if res['error'] == '':
-                # 缓存结果
-                await write_cache(torrent_hash, res)
-                msg = f"种子哈希: {torrent_hash}\n文件类型：{res['type']}-{res['file_type']}\n种子名称: {res['name']}\n总大小: {hum_convert(res['size'])}\n文件总数：{res['count']}\n"
-                # if len(res['screenshots']) > 0:
-                #     msg += "种子截图：\n"
-                #     for i in res['screenshots'][:3]:
-                #         msg += f"  {i['screenshot']}\n"
-            elif res['error'] == 'quota_limited':
-                msg = "分析失败: 请求过于频繁，请稍后再试"
-            else:
-                msg = f"分析失败：{res['error']}"
+                if res['error'] == '':
+                    # 缓存结果
+                    await write_cache(torrent_hash, res)
+                    msg = f"种子哈希: {torrent_hash}\n"
+                    msg += f"文件类型：{res['type']}-{res['file_type']}\n"
+                    msg += f"种子名称: {res['name']}\n"
+                    msg += f"总大小: {hum_convert(res['size'])}\n"
+                    msg += f"文件总数：{res['count']}"
+                    # if len(res['screenshots']) > 0:
+                    #     msg += "种子截图：\n"
+                    #     for i in res['screenshots'][:3]:
+                    #         msg += f"  {i['screenshot']}\n"
+                elif res['error'] == 'quota_limited':
+                    msg = "分析失败: 请求过于频繁，请稍后再试"
+                else:
+                    msg = f"分析失败：{res['error']}"
         except ConnectTimeoutError:
             msg = f"连接{baseurl}失败，请稍后再试。"  
         except SSLError:
             msg = f"连接{baseurl}失败，请稍后再试。"
+        except Exception as e:
+            # msg = f"分析失败：{traceback.format_exc()}"
+            msg = f"分析失败：{e}"
     # print(msg)
-    return msg
+    return msg.strip()
 
 
 # debug
