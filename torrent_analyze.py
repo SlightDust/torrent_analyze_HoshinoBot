@@ -118,12 +118,12 @@ async def analyze_torrent(torrent_url):
                 try:
                     ares = await aiorequests.get(url, timeout=10)
                     res = await ares.json()
-                    await asyncio.sleep(3)
-                    if res['error'] == '':
+                    if res['error'] == '':  # 失败时候error是quota_limited
                         # 缓存结果
                         await write_cache(torrent_hash, res)
                         ok = True
                         break
+                    await asyncio.sleep(3)
                 except ConnectTimeoutError:
                     msg = f"连接{baseurl}失败，请稍后再试。" 
                     return msg 
