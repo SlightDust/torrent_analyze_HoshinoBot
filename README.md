@@ -4,7 +4,7 @@
 
 ## 安装方法
 1. 在hoshino/modules下clone本仓库`git clone https://github.com/SlightDust/torrent_analyze_HoshinoBot.git`
-2. 在hoshino/config/__bot__.py中加入
+2. 在hoshino/config/\_\_bot\_\_.py中加入
 
 ```python
 MODULES_ON = {
