@@ -18,6 +18,9 @@ if debug:
     if _current_dir not in sys.path:
         sys.path.insert(-1, _current_dir)
     import aiorequests
+    class util:
+        def filt_message(msg):
+            return msg
 else:
     from hoshino import Service, priv, util, aiorequests
     sv = Service(
@@ -94,65 +97,63 @@ async def analyze_torrent(torrent_url):
     if not flag:
         msg = "这不是一个磁链或种子hash"
         return msg
+    # 先检查缓存
+    cache_res = await check_cache(torrent_hash)
+    if cache_res: # 命中缓存
+        res = cache_res
+        msg = f"种子哈希: {torrent_hash}\n"
+        msg += f"文件类型：{res['type']}-{res['file_type']}\n"
+        msg += f"种子名称: {util.filt_message(res['name'])}\n"
+        msg += f"总大小: {hum_convert(res['size'])}\n"
+        msg += f"文件总数：{res['count']}"
+        return msg.strip()
+    # 未命中缓存
+    # url编码
+    baseurl = "https://whatslink.info"
+    api_path = "/api/v1/link"
+    url = urllib.parse.quote(magnet_url)
+    url = f"{baseurl}{api_path}?url={url}"
+    # 循环20次，直到成功或达到最大次数
+    ok = False
+    for i in range(20):
+        print(f"第{i+1}次请求")
+        try:
+            ares = await aiorequests.get(url, timeout=10)
+            res = await ares.json()
+            if res['error'] == '':  # 失败时候error是quota_limited
+                # 缓存结果
+                await write_cache(torrent_hash, res)
+                ok = True
+                break
+            await asyncio.sleep(3)
+        except ConnectTimeoutError:
+            msg = f"连接{baseurl}失败，请稍后再试。" 
+            return msg 
+        except SSLError:
+            msg = f"连接{baseurl}失败，请稍后再试。"
+            return msg
+        except Exception as e:
+            msg = f"分析失败：{e}"
+            return msg
+    if not ok:
+        msg = f"分析失败，请稍后再试。"
+        return msg
     else:
-        # 先检查缓存
-        cache_res = await check_cache(torrent_hash)
-        if cache_res: # 命中缓存
-            res = cache_res
-            msg = f"种子哈希: {torrent_hash}\n"
-            msg += f"文件类型：{res['type']}-{res['file_type']}\n"
-            msg += f"种子名称: {util.filt_message(res['name'])}\n"
-            msg += f"总大小: {hum_convert(res['size'])}\n"
-            msg += f"文件总数：{res['count']}"
-            return msg.strip()
-        else: # 未命中缓存
-            # url编码
-            baseurl = "https://whatslink.info"
-            api_path = "/api/v1/link"
-            url = urllib.parse.quote(magnet_url)
-            url = f"{baseurl}{api_path}?url={url}"
-            # 循环20次，直到成功或达到最大次数
-            ok = False
-            for i in range(20):
-                print(f"第{i+1}次请求")
-                try:
-                    ares = await aiorequests.get(url, timeout=10)
-                    res = await ares.json()
-                    if res['error'] == '':  # 失败时候error是quota_limited
-                        # 缓存结果
-                        await write_cache(torrent_hash, res)
-                        ok = True
-                        break
-                    await asyncio.sleep(3)
-                except ConnectTimeoutError:
-                    msg = f"连接{baseurl}失败，请稍后再试。" 
-                    return msg 
-                except SSLError:
-                    msg = f"连接{baseurl}失败，请稍后再试。"
-                    return msg
-                except Exception as e:
-                    msg = f"分析失败：{e}"
-                    return msg
-            if not ok:
-                msg = f"分析失败，请稍后再试。"
-                return msg
-            else:
-                msg = f"种子哈希: {torrent_hash}\n"
-                msg += f"文件类型：{res['type']}-{res['file_type']}\n"
-                msg += f"种子名称: {res['name']}\n"
-                msg += f"总大小: {hum_convert(res['size'])}\n"
-                msg += f"文件总数：{res['count']}"
-                # if len(res['screenshots']) > 0:
-                #     msg += "种子截图：\n"
-                #     for i in res['screenshots'][:3]:
-                #         msg += f"  {i['screenshot']}\n"
-            return msg.strip()
+        msg = f"种子哈希: {torrent_hash}\n"
+        msg += f"文件类型：{res['type']}-{res['file_type']}\n"
+        msg += f"种子名称: {res['name']}\n"
+        msg += f"总大小: {hum_convert(res['size'])}\n"
+        msg += f"文件总数：{res['count']}"
+        # if len(res['screenshots']) > 0:
+        #     msg += "种子截图：\n"
+        #     for i in res['screenshots'][:3]:
+        #         msg += f"  {i['screenshot']}\n"
+    return msg.strip()
 
 
 # debug
 if __name__ == '__main__':
     if debug:
         loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop)
         url = "ec809a3d681c2dda1bc1ae8feb84c4b8077896b2"
         print(loop.run_until_complete(analyze_torrent(url)))
