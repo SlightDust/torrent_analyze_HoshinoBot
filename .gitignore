@@ -161,3 +161,4 @@ cython_debug/
 #.idea/
 
 torrent_info_cache.json
+aiorequests.py
