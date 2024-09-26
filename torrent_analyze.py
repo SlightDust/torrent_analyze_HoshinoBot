@@ -19,7 +19,7 @@ if debug:
         sys.path.insert(-1, _current_dir)
     import aiorequests
 else:
-    from hoshino import Service, priv, aiorequests
+    from hoshino import Service, priv, util, aiorequests
     sv = Service(
         name = 'torrent_analyze',  #,  #功能名
         use_priv = priv.NORMAL, #使用权限   
@@ -101,7 +101,7 @@ async def analyze_torrent(torrent_url):
             res = cache_res
             msg = f"种子哈希: {torrent_hash}\n"
             msg += f"文件类型：{res['type']}-{res['file_type']}\n"
-            msg += f"种子名称: {res['name']}\n"
+            msg += f"种子名称: {util.filt_message(res['name'])}\n"
             msg += f"总大小: {hum_convert(res['size'])}\n"
             msg += f"文件总数：{res['count']}"
             return msg.strip()
