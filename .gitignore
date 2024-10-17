@@ -162,3 +162,4 @@ cython_debug/
 
 torrent_info_cache.json
 aiorequests.py
+group_config.json
