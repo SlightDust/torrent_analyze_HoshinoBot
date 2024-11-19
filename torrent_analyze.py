@@ -88,6 +88,11 @@ else:
             traceback.print_exc()
             await bot.send(ev, f"未知错误：请检查控制台")
 
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Referer': 'https://whatslink.info/',
+    'Cache-Control': 'no-cache'
+}
 
 # 初次启动时，检查torrent_info_cache.json是否存在，不存在则创建
 if not os.path.exists(cache_path):
@@ -232,7 +237,7 @@ def create_image_from_text(text, font_size=font_size, line_spacing=10, margin=20
 
 async def fetch_image_with_blur(url, blur_radius=5):
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        response = await client.get(url, headers=headers)
         print(response.headers["Content-Type"])
         # 检查响应状态码和内容类型
         if response.status_code == 200 and "image" in response.headers["Content-Type"]:
@@ -357,7 +362,7 @@ async def analyze_torrent(torrent_url,gid):
     for i in range(20):
         print(f"第{i+1}次请求")
         try:
-            ares = await aiorequests.get(url, timeout=10)
+            ares = await aiorequests.get(url, timeout=10, headers=headers)
             res = await ares.json()
             if res['error'] == '':  # 失败时候error是quota_limited
                 # 缓存结果
