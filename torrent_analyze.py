@@ -364,9 +364,10 @@ async def analyze_torrent(torrent_url,gid):
         try:
             ares = await aiorequests.get(url, timeout=10, headers=headers)
             res = await ares.json()
-            if res['error'] == '':  # 失败时候error是quota_limited
-                # 缓存结果
-                await write_cache(torrent_hash, res)
+            if res['error'] == '':  # 频率限制时候error是quota_limited
+                if res['type'].strip() != "UNKNOWN": # 没有种子信息时type是UNKNOWN
+                    # 缓存结果
+                    await write_cache(torrent_hash, res)
                 ok = True
                 break
             await asyncio.sleep(3)
